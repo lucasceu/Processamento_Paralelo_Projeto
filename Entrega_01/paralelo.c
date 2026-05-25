@@ -3,117 +3,135 @@
 #include <math.h>
 #include <omp.h>
 
-double* generate_gaussian_kernel(int k, double sigma) {
-    double* kernel = (double*) malloc(k * k * sizeof(double));
-    double sum = 0.0;
-    int half = k / 2;
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+typedef struct {
+    int width;
+    int height;
+    int stride;
+    float *data;
+} Image;
+
+static void create_gaussian_kernel(float *kernel, int size, float sigma) {
+    int half = size / 2;
+    float sum = 0.0f;
     for (int i = -half; i <= half; i++) {
         for (int j = -half; j <= half; j++) {
-            double val = exp(-(i * i + j * j) / (2.0 * sigma * sigma));
-            kernel[(i + half) * k + (j + half)] = val;
+            float val = expf(-(i * i + j * j) / (2.0f * sigma * sigma));
+            kernel[(i + half) * size + (j + half)] = val;
             sum += val;
         }
     }
-    for (int i = 0; i < k * k; i++) kernel[i] /= sum;
-    return kernel;
+    for (int i = 0; i < size * size; i++) kernel[i] /= sum;
 }
 
-double* read_pgm(const char *filename, int *width, int *height) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) { printf("Erro ao abrir %s\n", filename); exit(1); }
-    char magic[3]; int max_val;
-    fscanf(file, "%2s", magic);
-    int c = fgetc(file);
-    while (c == '#' || c == '\n' || c == '\r' || c == ' ') {
-        if (c == '#') while ((c = fgetc(file)) != '\n' && c != EOF);
-        else c = fgetc(file);
-    }
-    ungetc(c, file);
-    fscanf(file, "%d %d %d", width, height, &max_val);
-    fgetc(file);
-    double *image = (double*) malloc((*width) * (*height) * sizeof(double));
-    if (magic[1] == '5') {
-        unsigned char *temp = (unsigned char*) malloc((*width) * (*height));
-        fread(temp, 1, (*width) * (*height), file);
-        for (int i = 0; i < (*width) * (*height); i++) image[i] = (double)temp[i];
-        free(temp);
-    } else {
-        int val;
-        for (int i = 0; i < (*width) * (*height); i++) {
-            fscanf(file, "%d", &val);
-            image[i] = (double)val;
+static void pad_from_raw(Image *img, const unsigned char *raw, int half) {
+    int p_w = img->stride;
+    int p_h = img->height + 2 * half;
+
+    for (int i = 0; i < p_h; i++) {
+        for (int j = 0; j < p_w; j++) {
+            int src_i = i - half;
+            int src_j = j - half;
+            if (src_i < 0) src_i = 0;
+            if (src_i >= img->height) src_i = img->height - 1;
+            if (src_j < 0) src_j = 0;
+            if (src_j >= img->width) src_j = img->width - 1;
+            img->data[i * p_w + j] = (float)raw[src_i * img->width + src_j];
         }
     }
-    fclose(file);
-    return image;
 }
 
-void write_pgm(const char *filename, double *image, int width, int height) {
-    FILE *file = fopen(filename, "wb");
-    fprintf(file, "P5\n%d %d\n255\n", width, height);
-    unsigned char *temp = (unsigned char*) malloc(width * height);
-    for (int i = 0; i < width * height; i++) {
-        double val = image[i];
-        if (val > 255.0) val = 255.0;
-        if (val < 0.0) val = 0.0;
-        temp[i] = (unsigned char)val;
+static void write_png_from_padded(const char *filename, Image *img, int half) {
+    int w = img->width;
+    int h = img->height;
+    int stride = img->stride;
+    unsigned char *out = (unsigned char *)malloc(w * h);
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            float val = img->data[(i + half) * stride + (j + half)];
+            if (val < 0.0f) val = 0.0f;
+            if (val > 255.0f) val = 255.0f;
+            out[i * w + j] = (unsigned char)val;
+        }
     }
-    fwrite(temp, 1, width * height, file);
-    free(temp);
-    fclose(file);
+
+    stbi_write_png(filename, w, h, 1, out, w);
+    free(out);
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        printf("Uso: %s <imagem.pgm> <tamanho_kernel> <threads>\n", argv[0]);
+    if (argc < 2) {
+        printf("Uso: %s <arquivo_imagem> <iteracoes>\n", argv[0]);
         return 1;
     }
 
-    char *input_file = argv[1];
-    int k = atoi(argv[2]);
-    int threads = atoi(argv[3]);
-    int iterations = 10;
-    int width, height;
+    char *filename = argv[1];
+    int iterations = (argc > 2) ? atoi(argv[2]) : 100;
+    int k_size = 3;
+    float sigma = 1.0f;
+    int half = k_size / 2;
 
-    omp_set_num_threads(threads);
+    int width, height, channels;
+    unsigned char *raw = stbi_load(filename, &width, &height, &channels, 1);
+    if (!raw) {
+        printf("Erro ao carregar a imagem.\n");
+        return 1;
+    }
 
-    double *image = read_pgm(input_file, &width, &height);
-    double *result = (double*) malloc(width * height * sizeof(double));
-    for (int i = 0; i < width * height; i++) result[i] = image[i];
+    int p_w = width + 2 * half;
+    int p_h = height + 2 * half;
 
-    double *kernel = generate_gaussian_kernel(k, 1.0);
-    int half_k = k / 2;
+    Image img1 = {width, height, p_w, (float *)malloc(p_w * p_h * sizeof(float))};
+    Image img2 = {width, height, p_w, (float *)malloc(p_w * p_h * sizeof(float))};
+    float *kernel = (float *)malloc(k_size * k_size * sizeof(float));
 
-    double start_time = omp_get_wtime();
+    pad_from_raw(&img1, raw, half);
+    create_gaussian_kernel(kernel, k_size, sigma);
 
-    for (int iter = 0; iter < iterations; iter++) {
-        
-        #pragma omp parallel for
-        for (int i = half_k; i < height - half_k; i++) {
-            for (int j = half_k; j < width - half_k; j++) {
-                double sum = 0.0;
-                for (int ki = -half_k; ki <= half_k; ki++) {
-                    for (int kj = -half_k; kj <= half_k; kj++) {
-                        sum += image[(i + ki) * width + (j + kj)] * kernel[(ki + half_k) * k + (kj + half_k)];
+    Image *src = &img1;
+    Image *dst = &img2;
+
+    double start = omp_get_wtime();
+
+    #pragma omp parallel
+    {
+        for (int it = 0; it < iterations; it++) {
+            #pragma omp for schedule(static)
+            for (int i = half; i < height + half; i++) {
+                for (int j = half; j < width + half; j++) {
+                    float sum = 0.0f;
+                    for (int ki = -half; ki <= half; ki++) {
+                        for (int kj = -half; kj <= half; kj++) {
+                            sum += src->data[(i + ki) * p_w + (j + kj)] *
+                                   kernel[(ki + half) * k_size + (kj + half)];
+                        }
                     }
+                    dst->data[i * p_w + j] = sum;
                 }
-                result[i * width + j] = sum;
             }
-        }
-        
-        if (iter < iterations - 1) {
-            for (int i = 0; i < width * height; i++) image[i] = result[i];
+
+            #pragma omp single
+            {
+                Image *tmp = src; src = dst; dst = tmp;
+            }
         }
     }
 
-    double end_time = omp_get_wtime();
+    double end = omp_get_wtime();
 
-    char output_file[100];
-    sprintf(output_file, "saida_paralela_k%d.pgm", k);
-    write_pgm(output_file, result, width, height);
+    write_png_from_padded("saida_blur_paralela.png", src, half);
 
-    printf("Tempo Paralelo (%d threads): %f segundos\n", threads, end_time - start_time);
+    printf("Arquivo: %s | Threads: %d | Iteracoes: %d | Tempo: %.4f s\n",
+           filename, omp_get_max_threads(), iterations, end - start);
 
-    free(image); free(result); free(kernel);
+    stbi_image_free(raw);
+    free(img1.data);
+    free(img2.data);
+    free(kernel);
     return 0;
 }

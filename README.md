@@ -1,6 +1,6 @@
 # Processamento Paralelo - Projeto ⚡
 
-Este projeto aplica um filtro Gaussiano em imagens PGM no modo serial e paralelo (OpenMP).
+Este projeto aplica um filtro Gaussiano em imagens PNG/JPG no modo serial e paralelo (OpenMP).
 
 Alunos: Lucas Pereira Céu e Henrique Daniel Resende
 
@@ -17,7 +17,7 @@ Alunos: Lucas Pereira Céu e Henrique Daniel Resende
 
 ```bash
 cd Entrega_01
-gcc -O2 -fopenmp -lm serial.c -o serial
+gcc -O2 -lm serial.c -o serial
 gcc -O2 -fopenmp -lm paralelo.c -o paralelo
 ```
 
@@ -26,27 +26,28 @@ gcc -O2 -fopenmp -lm paralelo.c -o paralelo
 Serial:
 
 ```bash
-./serial image_2048x2048.pgm 3
+./serial base1024x1024.png 10
 ```
 
 Paralelo:
 
 ```bash
-./paralelo image_2048x2048.pgm 3 8
+OMP_NUM_THREADS=8 ./paralelo base1024x1024.png 100
 ```
 
 O programa imprime o tempo de execução no terminal. Exemplo:
 
 ```text
-Tempo Paralelo (8 threads): 0.251901 segundos
+Arquivo: base1024x1024.png | Threads: 8 | Iteracoes: 100 | Tempo: 0.2519 s
 ```
 
 Onde:
-- argumento 1: caminho da imagem PGM
-- argumento 2: tamanho do kernel (k)
-- argumento 3 (paralelo): número de threads
+- argumento 1: caminho da imagem
+- argumento 2: número de iterações (opcional)
+
+Se omitido, o padrão é 10 no serial e 100 no paralelo.
 
 Saídas 📦:
 
-- saida_serial_k<k>.pgm
-- saida_paralela_k<k>.pgm
+- saida_blur_sequencial.png
+- saida_blur_paralela.png

@@ -1,0 +1,11 @@
+# Build artifacts
+/Entrega_01/serial
+/Entrega_01/paralelo
+/Entrega_01/*.o
+/Entrega_01/*.out
+
+# Generated images
+/Entrega_01/*.png
+!/Entrega_01/base1024x1024.png
+!/Entrega_01/base_512x512.png
+!/Entrega_01/base_2048x2048.png
