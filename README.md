@@ -2,12 +2,12 @@
 
 Este projeto aplica um filtro Gaussiano em imagens PGM no modo serial e paralelo (OpenMP).
 
-Alunos: Lucas Pereira Ceu e Henrique Daniel Resende
+Alunos: Lucas Pereira Céu e Henrique Daniel Resende
 
 ## Arquivos .c 📄
 
-- Entrega_01/serial.c: versao serial do filtro Gaussiano.
-- Entrega_01/paralelo.c: versao paralela do filtro Gaussiano (OpenMP).
+- Entrega_01/serial.c: versão serial do filtro Gaussiano.
+- Entrega_01/paralelo.c: versão paralela do filtro Gaussiano (OpenMP).
 
 ## Requisitos ✅
 
@@ -35,7 +35,7 @@ Paralelo:
 ./paralelo image_2048x2048.pgm 3 8
 ```
 
-O programa imprime o tempo de execucao no terminal. Exemplo:
+O programa imprime o tempo de execução no terminal. Exemplo:
 
 ```text
 Tempo Paralelo (8 threads): 0.251901 segundos
@@ -44,9 +44,9 @@ Tempo Paralelo (8 threads): 0.251901 segundos
 Onde:
 - argumento 1: caminho da imagem PGM
 - argumento 2: tamanho do kernel (k)
-- argumento 3 (paralelo): numero de threads
+- argumento 3 (paralelo): número de threads
 
-Saidas 📦:
+Saídas 📦:
 
 - saida_serial_k<k>.pgm
 - saida_paralela_k<k>.pgm
