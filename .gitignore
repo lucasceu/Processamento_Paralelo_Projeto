@@ -1,8 +1,0 @@
-# Build artifacts
-/Entrega_01/serial
-/Entrega_01/paralelo
-/Entrega_01/*.o
-/Entrega_01/*.out
-
-# Generated images
-/Entrega_01/*.png

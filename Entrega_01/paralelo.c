@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
     char *filename = argv[1];
     int iterations = (argc > 2) ? atoi(argv[2]) : 100;
-    int k_size = 3;
+    int k_size     = (argc > 3) ? atoi(argv[3]) : 3;
     float sigma = 1.0f;
     int half = k_size / 2;
 
@@ -126,8 +126,8 @@ int main(int argc, char *argv[]) {
 
     write_png_from_padded("saida_blur_paralela.png", src, half);
 
-    printf("Arquivo: %s | Threads: %d | Iteracoes: %d | Tempo: %.4f s\n",
-           filename, omp_get_max_threads(), iterations, end - start);
+    printf("Benchmark Paralelo - Arquivo: %s | Kernel: %dx%d | Threads: %d | Iteracoes: %d | Tempo: %.4f s\n",
+           filename, k_size, k_size, omp_get_max_threads(), iterations, end - start);
 
     stbi_image_free(raw);
     free(img1.data);
