@@ -1,0 +1,18 @@
+# Build artifacts
+/Entrega_01/serial
+/Entrega_01/paralelo
+/Entrega_01/*.o
+/Entrega_01/*.out
+
+# Generated images
+/Entrega_01/*.png
+
+# Entrega 03 build artifacts
+/Entrega_03/cuda_blur
+/Entrega_03/*.o
+/Entrega_03/*.png
+/Entrega_03/benchmark_output.txt
+/Entrega_03/resultados_cuda.csv
+/Entrega_03/benchmark_cuda.xlsx
+
+*.pdf
